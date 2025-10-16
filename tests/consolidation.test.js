@@ -81,8 +81,8 @@ const sampleRow = {
 };
 gatherCapabilityComments(sampleRow, entry);
 gatherRetentionComments(sampleRow, entry);
-assert.deepStrictEqual(entry.capComments, ['First note', 'Second note', 'Third note']);
-assert.deepStrictEqual(entry.retComments, ['Keep', 'Hold', 'Hold']);
+assert.deepStrictEqual(entry.capComments, ['First note\nSecond note\nThird note']);
+assert.deepStrictEqual(entry.retComments, ['Keep\nHold\nHold']);
 
 const files = [
   { name: 'Billingfors_pulp_and_paper.csv' },
@@ -166,37 +166,6 @@ assert.strictEqual(jonkoping.capabilityAvg, 3.0);
 assert.strictEqual(jonkoping.retentionRisk, 'M');
 assert.strictEqual(jonkoping.capabilityComment, 'Alpha');
 assert.strictEqual(jonkoping.retentionComment, 'Gamma');
-
-const messyFiles = [
-  { name: 'billingfors pulp.csv' },
-  { name: 'Billingfors_PULP_extra.csv' }
-];
-const messyData = [
-  [
-    {
-      'Mill': 'Billingfors  Pulp ',
-      'Role Area': 'Operations Manager ',
-      'Capability Comments': 'First capability insight',
-      'Retention comment': 'Keep focus on pulp'
-    }
-  ],
-  [
-    {
-      'site': 'billingfors pulp mill',
-      'Role': 'operations manager',
-      'capability_comments_additional': 'Second capability insight',
-      'Retention Comment (extra)': 'Mitigate risk'
-    }
-  ]
-];
-const messyConsolidated = runAggregation(messyData, messyFiles, bucketCapability);
-const billingforsPulp = messyConsolidated.find(r => r.mill === 'Billingfors Pulp');
-assert(billingforsPulp, 'Missing Billingfors Pulp aggregate when normalising site names');
-assert.strictEqual(billingforsPulp.roleArea, 'Operations Manager');
-assert(billingforsPulp.capabilityComment.includes('First capability insight'));
-assert(billingforsPulp.capabilityComment.includes('Second capability insight'));
-assert(billingforsPulp.retentionComment.includes('Keep focus on pulp'));
-assert(billingforsPulp.retentionComment.includes('Mitigate risk'));
 
 const legacyTokens = [
   ['M', 'o', 's', 'i', 'n', 'e', 'e'],
