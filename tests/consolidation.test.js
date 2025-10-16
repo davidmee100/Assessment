@@ -6,6 +6,43 @@ const path = require('path');
 const htmlPath = path.join(__dirname, '..', 'Assessment Tool_151025_Maria Special (4) (1).html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 
+function extractFunctionSource(name) {
+  const needle = `function ${name}(`;
+  const start = html.indexOf(needle);
+  if (start === -1) {
+    throw new Error(`Missing ${name} declaration`);
+  }
+  let depth = 0;
+  let inString = null;
+  let escaped = false;
+  for (let i = start; i < html.length; i += 1) {
+    const ch = html[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === inString) {
+        inString = null;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === '\'' || ch === '`') {
+      inString = ch;
+      continue;
+    }
+    if (ch === '{') {
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return html.slice(start, i + 1);
+      }
+    }
+  }
+  throw new Error(`Could not extract full body for ${name}`);
+}
+
 function instantiateDeclaration(name, regex) {
   const match = html.match(regex);
   if (!match) throw new Error(`Could not extract ${name}`);

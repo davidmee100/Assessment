@@ -3086,18 +3086,26 @@
               } else {
                 site = normaliseSite(site);
               }
+              if (typeof site === 'string') {
+                site = site.replace(/\s+/g, ' ').trim();
+              }
+              if (!site) {
+                site = 'Unknown';
+              }
               if (!siteAgg[site]) siteAgg[site] = {};
               // Determine the role name.  CSV headers from different sources may use
               // variations such as "Role", "Role Area", "role", "roleArea", "RoleArea",
               // etc.  Normalise by checking a few common cases.  Include lower‑case
               // "role"/"rolearea" variants so that rows with a "role" header aren't
               // ignored.
-              const role = r['Role Area'] || r['Role'] || r['roleArea'] || r['RoleArea']
-                          || r['role'] || r['rolearea'] || '';
+              const rawRole = r['Role Area'] || r['Role'] || r['roleArea'] || r['RoleArea']
+                            || r['role'] || r['rolearea'] || '';
+              const role = (rawRole || '').toString().replace(/\s+/g, ' ').trim();
               if (!role) return;
-              if (!siteAgg[site][role]) {
+              const roleKey = role.toLowerCase();
+              if (!siteAgg[site][roleKey]) {
                 // Initialise a new entry with separate sums and counts for each metric.  Missing values are ignored in sums and counts.
-                siteAgg[site][role] = {
+                siteAgg[site][roleKey] = {
                   count: 0,
                   roleArea: role,
                   critSum: 0,
@@ -3118,7 +3126,16 @@
                   retComments: []
                 };
               }
-              const entry = siteAgg[site][role];
+              const entry = siteAgg[site][roleKey];
+              if (entry.roleArea !== role) {
+                const entryHasCaps = /[A-Z]/.test(entry.roleArea || '');
+                const roleHasCaps = /[A-Z]/.test(role);
+                if (roleHasCaps && !entryHasCaps) {
+                  entry.roleArea = role;
+                } else if (role.length > (entry.roleArea || '').length) {
+                  entry.roleArea = role;
+                }
+              }
               // Track the total number of responses for this role.
               entry.count++;
               // Criticality: treat blank or '-' as missing
@@ -3217,7 +3234,7 @@
               // scan all keys on the row for ones that normalise to start with
               // "capabilitycomment" after removing punctuation.
               (function() {
-                let combined = '';
+                const fragments = [];
                 Object.keys(r).forEach(key => {
                   const norm = key
                     .toString()
@@ -3229,22 +3246,24 @@
                   if (norm.startsWith('capabilitycomment')) {
                     const val = (r[key] || '').toString();
                     if (val) {
-                      if (combined) combined += '\n';
-                      combined += val;
+                      fragments.push(val);
                     }
                   }
                 });
-                if (combined) {
-                  // Replace pipe separators with newlines for aggregation and trim whitespace.
-                  const cleaned = combined.replace(/\s*\|\s*/g, '\n').trim();
-                  if (cleaned) {
-                    entry.capComments.push(cleaned);
-                  }
+                if (fragments.length) {
+                  fragments.forEach(fragment => {
+                    fragment
+                      .replace(/\s*\|\s*/g, '\n')
+                      .split(/\r?\n/)
+                      .map(part => part.trim())
+                      .filter(Boolean)
+                      .forEach(part => entry.capComments.push(part));
+                  });
                 }
               })();
               // Retention comments: handle multiple header variants similarly to capability comments.
               (function() {
-                let combined = '';
+                const fragments = [];
                 Object.keys(r).forEach(key => {
                   const norm = key
                     .toString()
@@ -3253,16 +3272,19 @@
                   if (norm.startsWith('retentioncomment')) {
                     const val = (r[key] || '').toString();
                     if (val) {
-                      if (combined) combined += '\n';
-                      combined += val;
+                      fragments.push(val);
                     }
                   }
                 });
-                if (combined) {
-                  const cleaned = combined.replace(/\s*\|\s*/g, '\n').trim();
-                  if (cleaned) {
-                    entry.retComments.push(cleaned);
-                  }
+                if (fragments.length) {
+                  fragments.forEach(fragment => {
+                    fragment
+                      .replace(/\s*\|\s*/g, '\n')
+                      .split(/\r?\n/)
+                      .map(part => part.trim())
+                      .filter(Boolean)
+                      .forEach(part => entry.retComments.push(part));
+                  });
                 }
               })();
             });
