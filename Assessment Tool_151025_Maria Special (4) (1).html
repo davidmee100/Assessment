@@ -3119,16 +3119,7 @@
               if (!site) {
                 site = 'Unknown';
               }
-              const siteKey = canonicalSiteKey(site);
-              if (!siteAgg[siteKey]) {
-                siteAgg[siteKey] = {
-                  displayName: site,
-                  roles: {}
-                };
-              } else {
-                siteAgg[siteKey].displayName = normaliseDisplayName(siteAgg[siteKey].displayName, site);
-              }
-              const rolesObj = siteAgg[siteKey].roles;
+              if (!siteAgg[site]) siteAgg[site] = {};
               // Determine the role name.  CSV headers from different sources may use
               // variations such as "Role", "Role Area", "role", "roleArea", "RoleArea",
               // etc.  Normalise by checking a few common cases.  Include lower‑case
@@ -3136,20 +3127,12 @@
               // ignored.
               const rawRole = r['Role Area'] || r['Role'] || r['roleArea'] || r['RoleArea']
                             || r['role'] || r['rolearea'] || '';
-              let role = (rawRole || '').toString().replace(/\s+/g, ' ').trim();
+              const role = (rawRole || '').toString().replace(/\s+/g, ' ').trim();
               if (!role) return;
-              if (typeof scrubLegacyText === 'function') {
-                const scrubbed = scrubLegacyText(role);
-                if (scrubbed) {
-                  role = scrubbed;
-                }
-              }
-              role = role.replace(/[\s\-–/&]+$/g, '').replace(/\s{2,}/g, ' ').trim();
-              const roleKey = canonicalRoleKey(role);
-              if (!roleKey) return;
-              if (!rolesObj[roleKey]) {
+              const roleKey = role.toLowerCase();
+              if (!siteAgg[site][roleKey]) {
                 // Initialise a new entry with separate sums and counts for each metric.  Missing values are ignored in sums and counts.
-                rolesObj[roleKey] = {
+                siteAgg[site][roleKey] = {
                   count: 0,
                   roleArea: role,
                   critSum: 0,
@@ -3170,9 +3153,15 @@
                   retComments: []
                 };
               }
-              const entry = rolesObj[roleKey];
+              const entry = siteAgg[site][roleKey];
               if (entry.roleArea !== role) {
-                entry.roleArea = normaliseDisplayName(entry.roleArea, role);
+                const entryHasCaps = /[A-Z]/.test(entry.roleArea || '');
+                const roleHasCaps = /[A-Z]/.test(role);
+                if (roleHasCaps && !entryHasCaps) {
+                  entry.roleArea = role;
+                } else if (role.length > (entry.roleArea || '').length) {
+                  entry.roleArea = role;
+                }
               }
               // Track the total number of responses for this role.
               entry.count++;

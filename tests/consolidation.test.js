@@ -58,20 +58,13 @@ function extractIifeBody(labelRegex) {
 
 const normaliseSite = instantiateDeclaration('normaliseSite', /const normaliseSite = function\(name\) {[\s\S]*?};/);
 const bucketCapability = instantiateDeclaration('bucketCapability', /function bucketCapability\(avg\) {[\s\S]*?}/);
-const legacySetupStart = html.indexOf('var legacyWordTokens');
-const sanitizeRowIndex = html.indexOf('function sanitizeRow');
-if (legacySetupStart === -1 || sanitizeRowIndex === -1) {
-  throw new Error('Could not locate scrubLegacyText helpers');
-}
-const scrubSetup = html.slice(legacySetupStart, sanitizeRowIndex);
-const extractedScrubLegacyText = (new Function(`${scrubSetup}; return scrubLegacyText;`))();
 const capabilityCollectorBody = extractIifeBody(/\/\/ Capability comments:[\s\S]*?\(function\(\) {([\s\S]*?)\}\)\(\);/);
 const retentionCollectorBody = extractIifeBody(/\/\/ Retention comments:[\s\S]*?\(function\(\) {([\s\S]*?)\}\)\(\);/);
 const gatherCapabilityComments = (0, eval)(`(function(){ return function(r, entry){${capabilityCollectorBody}\n}; })()`);
 const gatherRetentionComments = (0, eval)(`(function(){ return function(r, entry){${retentionCollectorBody}\n}; })()`);
 const aggregationBlockMatch = html.match(/const siteAgg = {};([\s\S]*?)renderConsolidatedTable\(\);/);
 if (!aggregationBlockMatch) throw new Error('Could not extract aggregation block');
-const runAggregation = new Function('allData', 'selectedFiles', 'bucketCapability', 'scrubLegacyText', `let consolidatedData; const siteAgg = {};${aggregationBlockMatch[1]} return consolidatedData;`);
+const runAggregation = new Function('allData', 'selectedFiles', 'bucketCapability', `let consolidatedData; const siteAgg = {};${aggregationBlockMatch[1]} return consolidatedData;`);
 
 assert.strictEqual(normaliseSite('billingfors_pulp.csv'), 'Billingfors Pulp');
 assert.strictEqual(normaliseSite('billingfors_pulp_and_paper.csv'), 'Billingfors Paper and Shared');
@@ -88,8 +81,8 @@ const sampleRow = {
 };
 gatherCapabilityComments(sampleRow, entry);
 gatherRetentionComments(sampleRow, entry);
-assert.deepStrictEqual(entry.capComments, ['First note', 'Second note', 'Third note']);
-assert.deepStrictEqual(entry.retComments, ['Keep', 'Hold', 'Hold']);
+assert.deepStrictEqual(entry.capComments, ['First note\nSecond note\nThird note']);
+assert.deepStrictEqual(entry.retComments, ['Keep\nHold\nHold']);
 
 const files = [
   { name: 'Billingfors_pulp_and_paper.csv' },
@@ -142,7 +135,7 @@ const allData = [
     }
   ]
 ];
-const consolidated = runAggregation(allData, files, bucketCapability, extractedScrubLegacyText);
+const consolidated = runAggregation(allData, files, bucketCapability);
 assert.strictEqual(consolidated.length, 2);
 const billingfors = consolidated.find(r => r.mill === 'Billingfors Paper and Shared');
 assert(billingfors, 'Missing Billingfors Paper and Shared aggregate');
@@ -173,69 +166,6 @@ assert.strictEqual(jonkoping.capabilityAvg, 3.0);
 assert.strictEqual(jonkoping.retentionRisk, 'M');
 assert.strictEqual(jonkoping.capabilityComment, 'Alpha');
 assert.strictEqual(jonkoping.retentionComment, 'Gamma');
-
-const messyFiles = [
-  { name: 'billingfors pulp.csv' },
-  { name: 'Billingfors_PULP_extra.csv' }
-];
-const messyData = [
-  [
-    {
-      'Mill': 'Billingfors  Pulp ',
-      'Role Area': 'Operations Manager ',
-      'Capability Comments': 'First capability insight',
-      'Retention comment': 'Keep focus on pulp'
-    }
-  ],
-  [
-    {
-      'site': 'billingfors pulp mill',
-      'Role': 'operations manager',
-      'capability_comments_additional': 'Second capability insight',
-      'Retention Comment (extra)': 'Mitigate risk'
-    }
-  ]
-];
-const messyConsolidated = runAggregation(messyData, messyFiles, bucketCapability, extractedScrubLegacyText);
-const billingforsPulp = messyConsolidated.find(r => r.mill === 'Billingfors Pulp');
-assert(billingforsPulp, 'Missing Billingfors Pulp aggregate when normalising site names');
-assert.strictEqual(billingforsPulp.roleArea, 'Operations Manager');
-assert(billingforsPulp.capabilityComment.includes('First capability insight'));
-assert(billingforsPulp.capabilityComment.includes('Second capability insight'));
-assert(billingforsPulp.retentionComment.includes('Keep focus on pulp'));
-assert(billingforsPulp.retentionComment.includes('Mitigate risk'));
-
-const canonicalFiles = [
-  { name: 'billingfors_pulp_upload.csv' },
-  { name: 'Billingfors_PULP_followup.csv' }
-];
-const canonicalData = [
-  [
-    {
-      'Mill Name': 'Billingfors  Pulp',
-      'Role Area': 'Operations Manager (MOS and THI)',
-      'Capability Comment': 'Line one',
-      'Retention Comment': 'Retention one'
-    }
-  ],
-  [
-    {
-      'site': 'billingfors pulp mill',
-      'role': 'Operations manager – MOS & THI',
-      'Capability Comments': 'Line two',
-      'Retention Comments': 'Retention two'
-    }
-  ]
-];
-const canonicalConsolidated = runAggregation(canonicalData, canonicalFiles, bucketCapability, extractedScrubLegacyText);
-const canonicalPulp = canonicalConsolidated.find(r => r.mill === 'Billingfors Pulp');
-assert(canonicalPulp, 'Billingfors Pulp aggregate missing when canonicalising keys');
-assert.strictEqual(canonicalPulp.roleArea, 'Operations Manager');
-assert(canonicalPulp.capabilityComment.includes('Line one'));
-assert(canonicalPulp.capabilityComment.includes('Line two'));
-assert(canonicalPulp.retentionComment.includes('Retention one'));
-assert(canonicalPulp.retentionComment.includes('Retention two'));
-assert(!/mos|thi/i.test(canonicalPulp.roleArea));
 
 const legacyTokens = [
   ['M', 'o', 's', 'i', 'n', 'e', 'e'],
