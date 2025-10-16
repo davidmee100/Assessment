@@ -866,24 +866,7 @@ var appInitialized = false;
       // Parse seed data
       const seedEl = document.getElementById('seed-data');
       const seedJson = JSON.parse(seedEl.textContent);
-      // Override the seed data rows to reflect paper mill roles instead of pulp mill roles
-      /* Override of seedJson.rows for paper roles is no longer used in this combined tool.
-      seedJson.rows = [
-        {department: null, cluster: null, roleArea: 'Operations Manager (Paper)', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Supervisor (Shift/Area)', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Production / Area Manager – Paper Machine, Finishing & Converting', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Maintenance & Reliability Manager', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Process Engineer', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Project Engineer', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'HSE Manager', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Quality Manager', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'R&D / Technical Services Manager', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Supply Chain Manager', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Logistics & Warehouse Manager', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Continuous Improvement / Lean Manager', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''},
-        {department: null, cluster: null, roleArea: 'Finance / Plant Controller', criticality: 1, capTech: 1, capExperience: 1, capCrisis: 1, capLeadComm: 1, capSafety: 1, capabilityComment: '', retentionRisk: 'M', retentionComment: '', comments: '', preferredMethod: '-', gapMethodComment: ''}
-      ];
-      */
+      // The distributed seed data intentionally starts empty so every site begins with a blank worksheet.
 
       // Define the list of mills (sites) for the paper mill assessment.
       // Each site will maintain its own independent data set.
