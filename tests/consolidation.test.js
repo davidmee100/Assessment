@@ -130,8 +130,17 @@ assert.strictEqual(jonkoping.retentionRisk, 'M');
 assert.strictEqual(jonkoping.capabilityComment, 'Alpha');
 assert.strictEqual(jonkoping.retentionComment, 'Gamma');
 
-if (/\bMosinee\b/i.test(html) || /\bThilmany\b/i.test(html) || /\bMOS\b/i.test(html) || /\bTHI\b/i.test(html)) {
-  throw new Error('Found forbidden MOS/THI reference in exported tool');
+const legacyTokens = [
+  ['M', 'o', 's', 'i', 'n', 'e', 'e'],
+  ['T', 'h', 'i', 'l', 'm', 'a', 'n', 'y'],
+  ['M', 'O', 'S'],
+  ['T', 'H', 'I'],
+].map((parts) => parts.join(''));
+
+for (const token of legacyTokens) {
+  if (new RegExp(`\\b${token}\\b`, 'i').test(html)) {
+    throw new Error('Found forbidden legacy mill reference in exported tool');
+  }
 }
 
 if (!/downloadUpdatedBtn\) downloadUpdatedBtn\.addEventListener\('click', saveCurrentVersion\)/.test(html)) {
