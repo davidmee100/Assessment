@@ -3063,6 +3063,33 @@
         });
         Promise.all(promises).then(allData => {
           const siteAgg = {};
+          const canonicalSiteKey = function(name) {
+            return (name || '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
+          };
+          const canonicalRoleKey = function(name) {
+            const cleaned = (typeof scrubLegacyText === 'function')
+              ? scrubLegacyText(name || '')
+              : (name || '');
+            return cleaned
+              .toString()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, ' ')
+              .trim();
+          };
+          const normaliseDisplayName = function(current, candidate) {
+            const next = (candidate || '').toString().replace(/\s+/g, ' ').trim();
+            if (!next) return current || '';
+            if (!current) return next;
+            const currentHasCaps = /[A-Z]/.test(current);
+            const nextHasCaps = /[A-Z]/.test(next);
+            if (nextHasCaps && !currentHasCaps) {
+              return next;
+            }
+            if (next.length > current.length) {
+              return next;
+            }
+            return current;
+          };
           allData.forEach((dataRows, idx) => {
             const fileName = selectedFiles[idx].name.toLowerCase();
             dataRows.forEach(r => {
@@ -3290,8 +3317,10 @@
             });
           });
           consolidatedData = [];
-          Object.keys(siteAgg).forEach(site => {
-            const rolesObj = siteAgg[site];
+          Object.keys(siteAgg).forEach(siteKey => {
+            const siteEntry = siteAgg[siteKey];
+            const millName = siteEntry.displayName;
+            const rolesObj = siteEntry.roles;
             Object.values(rolesObj).forEach(item => {
               // Compute per-dimension averages based on the number of non-null entries for each metric.
               const avgCrit = item.critCount > 0 ? item.critSum / item.critCount : null;
@@ -3330,7 +3359,7 @@
               const capCom = uniq(item.capComments).join('\n');
               const retCom = uniq(item.retComments).join('\n');
               consolidatedData.push({
-                mill: site,
+                mill: millName,
                 roleArea: item.roleArea,
                 criticality: avgCrit != null ? parseFloat(avgCrit.toFixed(1)) : null,
                 capTech: avgTech != null ? parseFloat(avgTech.toFixed(1)) : null,
