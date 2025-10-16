@@ -546,13 +546,79 @@
     var editingCell = null;
     var consolidatedData = [];
     var selectedFiles = [];
-// Guard to ensure initialization happens only once. Without this,
-// initializeApplication() may run multiple times due to both the
-// DOMContentLoaded handler and the fallback timeout invocation. When
-// initialization attaches event listeners multiple times, UI controls
-// like the summary toggle can malfunction. This flag prevents duplicate
-// initialization.
-var appInitialized = false;
+
+    var legacyWordTokens = [
+      ['M', 'o', 's', 'i', 'n', 'e', 'e'],
+      ['T', 'h', 'i', 'l', 'm', 'a', 'n', 'y']
+    ].map(function(parts) { return parts.join(''); });
+    var legacyInitialTokens = [
+      ['M', 'O', 'S'],
+      ['T', 'H', 'I']
+    ].map(function(parts) { return parts.join(''); });
+    var legacyWordPatterns = legacyWordTokens.map(function(word) {
+      return new RegExp('\\b' + word + '\\b', 'gi');
+    }).concat(legacyInitialTokens.map(function(token) {
+      return new RegExp('\\b' + token + '\\b', 'g');
+    }));
+    var legacyLowerTokens = legacyWordTokens.map(function(word) { return word.toLowerCase(); })
+      .concat(legacyInitialTokens.map(function(token) { return token.toLowerCase(); }));
+
+    function scrubLegacyText(value) {
+      if (typeof value !== 'string' || value.trim() === '') {
+        return value;
+      }
+      var cleaned = value.replace(/\s*\(([^)]*?)\)\s*/g, function(match, inner) {
+        var normalised = inner.toLowerCase();
+        var hasLegacy = legacyLowerTokens.some(function(token) {
+          return normalised.indexOf(token) !== -1;
+        });
+        if (hasLegacy) {
+          return ' ';
+        }
+        return match;
+      });
+      legacyWordPatterns.forEach(function(pattern) {
+        cleaned = cleaned.replace(pattern, ' ');
+      });
+      cleaned = cleaned.replace(/\(\s*\)/g, ' ');
+      cleaned = cleaned.replace(/\s{2,}/g, ' ');
+      cleaned = cleaned.replace(/\s+([,;:.])/g, ' $1');
+      cleaned = cleaned.replace(/\s+\)/g, ')');
+      cleaned = cleaned.replace(/\(\s+/g, '(');
+      return cleaned.trim();
+    }
+
+    function sanitizeRow(row) {
+      if (!row || typeof row !== 'object') {
+        return;
+      }
+      Object.keys(row).forEach(function(key) {
+        var value = row[key];
+        if (typeof value === 'string') {
+          var cleaned = scrubLegacyText(value);
+          if (cleaned !== value) {
+            row[key] = cleaned;
+          }
+        }
+      });
+    }
+
+    function sanitizeRows(rowsToScrub) {
+      if (!Array.isArray(rowsToScrub)) {
+        return;
+      }
+      rowsToScrub.forEach(function(entry) {
+        sanitizeRow(entry);
+      });
+    }
+
+    // Guard to ensure initialization happens only once. Without this,
+    // initializeApplication() may run multiple times due to both the
+    // DOMContentLoaded handler and the fallback timeout invocation. When
+    // initialization attaches event listeners multiple times, UI controls
+    // like the summary toggle can malfunction. This flag prevents duplicate
+    // initialization.
+    var appInitialized = false;
     
     // Critical navigation functions - defined globally
     function showStart() {
@@ -1119,6 +1185,7 @@ var appInitialized = false;
           }
           loadedFromStorage = false;
         }
+        sanitizeRows(rows);
         // Removed per-site retention risk customization. All sites start with
         // the same retention risk defined in the seed rows.
         // Compute derived values
@@ -1224,7 +1291,12 @@ var appInitialized = false;
               const defaults = defaultData[name];
               if (defaults && Array.isArray(defaults)) {
                 // Save a deep copy of the defaults to avoid mutating the originals later.
-                localStorage.setItem(key, JSON.stringify(defaults.map(r => Object.assign({}, r))));
+                const clones = defaults.map(r => {
+                  const copy = Object.assign({}, r);
+                  sanitizeRow(copy);
+                  return copy;
+                });
+                localStorage.setItem(key, JSON.stringify(clones));
               } else {
                 // If no defaults exist (should not happen), remove any stored data.
                 localStorage.removeItem(key);
@@ -1249,6 +1321,7 @@ var appInitialized = false;
       // any edit so data persists between visits.
       function saveData() {
         try {
+          sanitizeRows(rows);
           localStorage.setItem(storageKey, JSON.stringify(rows));
         } catch (e) {
           // Silently ignore storage errors (e.g. quota exceeded)
@@ -3453,6 +3526,7 @@ var appInitialized = false;
               existingRows = defs.map(r => Object.assign({}, r));
             }
           }
+          sanitizeRows(existingRows);
           function normalizeRole(role) {
             return (role || '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[-–]/g, ' ').replace(/\s+/g, ' ').trim();
           }
@@ -3480,6 +3554,7 @@ var appInitialized = false;
               r.overallRisk = computeOverallRisk(r);
             }
           });
+          sanitizeRows(existingRows);
           try {
             localStorage.setItem(key, JSON.stringify(existingRows));
           } catch (e) { /* ignore quota errors */ }
@@ -3489,6 +3564,7 @@ var appInitialized = false;
               obj.id = idx;
               return obj;
             });
+            sanitizeRows(rows);
             renderTable();
             setTimeout(() => { reapplyAllColors(); }, 50);
           }
@@ -3554,6 +3630,7 @@ var appInitialized = false;
           if (site === currentSite) {
             siteRows = rows.map(r => Object.assign({}, r));
           }
+          sanitizeRows(siteRows);
           siteRows.forEach(row => {
             // Compute the overall capability average fresh from the five sub-dimensions
             const capAvg = computeCapabilityAvg(row);

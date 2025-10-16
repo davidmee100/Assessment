@@ -147,4 +147,47 @@ if (!/downloadUpdatedBtn\) downloadUpdatedBtn\.addEventListener\('click', saveCu
   throw new Error('Download updated tool button is not wired to saveCurrentVersion');
 }
 
+const legacyStart = html.indexOf('var legacyWordTokens');
+if (legacyStart === -1) {
+  throw new Error('Missing legacy sanitiser token setup');
+}
+const sanitizeRowsSrc = extractFunctionSource('sanitizeRows');
+const sanitizeRowsStart = html.indexOf('function sanitizeRows');
+const sanitizeSource = html.slice(legacyStart, sanitizeRowsStart + sanitizeRowsSrc.length);
+const sanitizeHelpers = (0, eval)(`(function(){ ${sanitizeSource}\n return { scrubLegacyText, sanitizeRow, sanitizeRows, legacyWordTokens, legacyInitialTokens }; })()`);
+const { scrubLegacyText, sanitizeRow, sanitizeRows } = sanitizeHelpers;
+
+assert.strictEqual(scrubLegacyText('Operations Manager (Paper)'), 'Operations Manager (Paper)');
+const dirtyRows = [{
+  roleArea: 'Operations Manager (MOS and THI)',
+  capabilityComment: 'Lead assignments in Mosinee and THI plants.',
+  retentionComment: 'Backfill MOS focus with Thilmany experience.',
+  notes: 'Transferred from MOS / THI legacy team.'
+}];
+sanitizeRows(dirtyRows);
+const cleaned = dirtyRows[0];
+assert.strictEqual(cleaned.roleArea, 'Operations Manager');
+['capabilityComment', 'retentionComment', 'notes'].forEach((key) => {
+  const val = cleaned[key] || '';
+  if (/\b(MOS|THI|Mosinee|Thilmany)\b/i.test(val)) {
+    throw new Error(`Legacy mill token survived sanitisation in ${key}`);
+  }
+});
+
+if (!/sanitizeRows\(rows\);\s*\/\/ Removed per-site retention risk/.test(html)) {
+  throw new Error('loadRowsForSite does not sanitise loaded data');
+}
+
+if (!/function saveData\(\) {[\s\S]*?sanitizeRows\(rows\);[\s\S]*?localStorage\.setItem/.test(html)) {
+  throw new Error('saveData is not sanitising rows before persisting');
+}
+
+if (!/sanitizeRows\(existingRows\);[\s\S]*?localStorage\.setItem\(key, JSON\.stringify\(existingRows\)\)/.test(html)) {
+  throw new Error('updateToolData does not sanitise persisted rows');
+}
+
+if (!/sanitizeRows\(siteRows\);[\s\S]*?siteRows\.forEach\(row => {/.test(html)) {
+  throw new Error('downloadAllCSV does not sanitise exported rows');
+}
+
 console.log('All consolidation tests passed.');
